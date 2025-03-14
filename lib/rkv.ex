@@ -4,6 +4,8 @@ defmodule Rkv do
   """
   use GenServer
 
+  alias Rkv.PubSub
+
   @type name :: atom()
   @type key :: any()
   @type value :: any()
@@ -16,8 +18,10 @@ defmodule Rkv do
   """
   @spec ets(name()) :: :ets.table()
   def ets(name) do
-    {table, _callback} = lookup(name)
-    table
+    case Registry.lookup(@registry, registry_key(name)) do
+      [{_pid, value}] -> value
+      [] -> raise "Unknown KV #{inspect(name)}"
+    end
   end
 
   @doc """
@@ -25,8 +29,7 @@ defmodule Rkv do
   """
   @spec all(name()) :: [{key(), value()}]
   def all(name) do
-    {table, _} = lookup(name)
-    :ets.tab2list(table)
+    name |> ets() |> :ets.tab2list()
   end
 
   @doc """
@@ -34,9 +37,7 @@ defmodule Rkv do
   """
   @spec get(name(), key(), any()) :: value() | nil
   def get(name, key, default \\ nil) do
-    {table, _} = lookup(name)
-
-    case :ets.lookup(table, key) do
+    case name |> ets() |> :ets.lookup(key) do
       [{_key, value}] -> value
       [] -> default
     end
@@ -47,9 +48,10 @@ defmodule Rkv do
   """
   @spec put(name(), key(), value()) :: :ok
   def put(name, key, value) do
-    {table, callback} = lookup(name)
-    :ets.insert(table, {key, value})
-    invoke_callback(callback, {:put, key, value})
+    name |> ets() |> :ets.insert({key, value})
+    message = {__MODULE__, :updated, name, key, value}
+    PubSub.broadcast({name, key}, message)
+    PubSub.broadcast(name, message)
     :ok
   end
 
@@ -58,10 +60,43 @@ defmodule Rkv do
   """
   @spec del(name(), key()) :: :ok
   def del(name, key) do
-    {table, callback} = lookup(name)
-    :ets.delete(table, key)
-    invoke_callback(callback, {:del, key})
+    name |> ets() |> :ets.delete(key)
+    message = {__MODULE__, :deleted, name, key}
+    PubSub.broadcast({name, key}, message)
+    PubSub.broadcast(name, message)
     :ok
+  end
+
+  @doc """
+  Subscribes the caller to key updates.
+  """
+  @spec watch_key(name(), key()) :: :ok | {:error, term()}
+  def watch_key(name, key) do
+    PubSub.subscribe({name, key})
+  end
+
+  @doc """
+  Subscribes the caller to all updates.
+  """
+  @spec watch_all(name()) :: :ok | {:error, term()}
+  def watch_all(name) do
+    PubSub.subscribe(name)
+  end
+
+  @doc """
+  Unsubsribes the caller from key updates.
+  """
+  @spec unwatch_key(name(), key()) :: :ok
+  def unwatch_key(name, key) do
+    PubSub.unsubscribe({name, key})
+  end
+
+  @doc """
+  Unsubsribes the caller from all updates.
+  """
+  @spec unwatch_all(name()) :: :ok
+  def unwatch_all(name) do
+    PubSub.unsubscribe(name)
   end
 
   @spec start_link([option()]) :: GenServer.on_start()
@@ -76,28 +111,21 @@ defmodule Rkv do
     |> Supervisor.child_spec(id: {__MODULE__, Keyword.fetch!(opts, :name)})
   end
 
+  @spec default_ets_options() :: list()
+  def default_ets_options do
+    [:public, read_concurrency: true, write_concurrency: true]
+  end
+
   @impl true
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
-    ets_options = Keyword.get(opts, :ets_options, [:public, read_concurrency: true])
-    callback = Keyword.get(opts, :callback)
-    table = :ets.new(__MODULE__, ets_options)
+    ets = :ets.new(__MODULE__, Keyword.get(opts, :ets_options, default_ets_options()))
 
-    case Registry.register(@registry, registry_key(name), {table, callback}) do
-      {:ok, _owner} -> {:ok, %{table: table, callback: callback}}
+    case Registry.register(@registry, registry_key(name), ets) do
+      {:ok, _owner} -> {:ok, %{ets: ets}}
       {:error, err} -> {:stop, err}
     end
   end
 
-  defp lookup(name) do
-    case Registry.lookup(@registry, registry_key(name)) do
-      [{_pid, value}] -> value
-      [] -> raise "Unknown KV #{inspect(name)}"
-    end
-  end
-
   defp registry_key(name), do: {__MODULE__, name}
-
-  defp invoke_callback(nil, _), do: :ok
-  defp invoke_callback(fun, arg), do: fun.(arg)
 end

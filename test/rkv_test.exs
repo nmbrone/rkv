@@ -2,8 +2,9 @@ defmodule RkvTest do
   use ExUnit.Case, async: true
 
   setup do
-    start_link_supervised!({Rkv, name: :kv_test, callback: &send(self(), &1)})
-    [kv: :kv_test]
+    name = :kv_test
+    start_link_supervised!({Rkv, name: name})
+    [kv: name]
   end
 
   describe "all/1" do
@@ -32,11 +33,6 @@ defmodule RkvTest do
       assert Rkv.put(kv, :foo, "bar") == :ok
       assert Rkv.get(kv, :foo) == "bar"
     end
-
-    test "invokes callback", %{kv: kv} do
-      assert Rkv.put(kv, :foo, "bar")
-      assert_receive {:put, :foo, "bar"}
-    end
   end
 
   describe "del/2" do
@@ -45,10 +41,61 @@ defmodule RkvTest do
       assert Rkv.del(kv, :foo) == :ok
       assert Rkv.get(kv, :foo) == nil
     end
+  end
 
-    test "invokes callback", %{kv: kv} do
-      assert Rkv.del(kv, :foo)
-      assert_receive {:del, :foo}
+  describe "watch_key/2" do
+    test "subscribes to key updates", %{kv: kv} do
+      assert :ok = Rkv.watch_key(kv, :foo)
+
+      Rkv.put(kv, :foo, "bar")
+      assert_receive {Rkv, :updated, ^kv, :foo, "bar"}
+
+      Rkv.put(kv, :bar, "baz")
+      refute_receive {Rkv, :updated, ^kv, :bar, _}
+
+      Rkv.del(kv, :foo)
+      assert_receive {Rkv, :deleted, ^kv, :foo}
+
+      Rkv.del(kv, :bar)
+      refute_receive {Rkv, :deleted, ^kv, :bar}
+    end
+  end
+
+  describe "watch_all/1" do
+    test "subscribes to all updates", %{kv: kv} do
+      assert :ok = Rkv.watch_all(kv)
+
+      Rkv.put(kv, :foo, "bar")
+      assert_receive {Rkv, :updated, ^kv, :foo, "bar"}
+
+      Rkv.put(kv, :bar, "baz")
+      assert_receive {Rkv, :updated, ^kv, :bar, "baz"}
+
+      Rkv.del(kv, :foo)
+      assert_receive {Rkv, :deleted, ^kv, :foo}
+
+      Rkv.del(kv, :bar)
+      assert_receive {Rkv, :deleted, ^kv, :bar}
+    end
+  end
+
+  describe "unwatch_key/1" do
+    test "unsubscribes from key updates", %{kv: kv} do
+      assert :ok = Rkv.watch_key(kv, :foo)
+      assert :ok = Rkv.unwatch_key(kv, :foo)
+
+      Rkv.put(kv, :foo, "bar")
+      refute_receive {Rkv, :updated, ^kv, :foo, "bar"}
+    end
+  end
+
+  describe "unwatch_all/1" do
+    test "unsubscribes from all updates", %{kv: kv} do
+      assert :ok = Rkv.watch_all(kv)
+      assert :ok = Rkv.unwatch_all(kv)
+
+      Rkv.put(kv, :foo, "bar")
+      refute_receive {Rkv, :updated, ^kv, :foo, "bar"}
     end
   end
 end
