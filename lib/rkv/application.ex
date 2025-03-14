@@ -5,8 +5,7 @@ defmodule Rkv.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Rkv.Registry,
-      Rkv.PubSub
+      {Registry, keys: :unique, name: Rkv.Registry}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Rkv.Supervisor)

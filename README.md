@@ -1,6 +1,6 @@
 # Rkv
 
-A simple ETS-based key-value storage with the ability to monitor changes.
+A simple ETS-based key-value storage with the ability to watch changes.
 
 ## Installation
 

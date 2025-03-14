@@ -2,7 +2,7 @@ defmodule RkvTest do
   use ExUnit.Case, async: true
 
   setup do
-    start_link_supervised!({Rkv, name: :kv_test})
+    start_link_supervised!({Rkv, name: :kv_test, callback: &send(self(), &1)})
     [kv: :kv_test]
   end
 
@@ -32,6 +32,11 @@ defmodule RkvTest do
       assert Rkv.put(kv, :foo, "bar") == :ok
       assert Rkv.get(kv, :foo) == "bar"
     end
+
+    test "invokes callback", %{kv: kv} do
+      assert Rkv.put(kv, :foo, "bar")
+      assert_receive {:put, :foo, "bar"}
+    end
   end
 
   describe "del/2" do
@@ -40,26 +45,10 @@ defmodule RkvTest do
       assert Rkv.del(kv, :foo) == :ok
       assert Rkv.get(kv, :foo) == nil
     end
-  end
 
-  describe "subscribe/2" do
-    test "subscribes the caller", %{kv: kv} do
-      assert Rkv.subscribe(kv, "foo") == :ok
-      Rkv.put(kv, "foo", "bar")
-      Rkv.del(kv, "foo")
-      assert_receive {:kv, :add, ^kv, "foo"}
-      assert_receive {:kv, :del, ^kv, "foo"}
-    end
-  end
-
-  describe "unsubscribe/2" do
-    test "unsubscribes the caller", %{kv: kv} do
-      Rkv.subscribe(kv, "foo")
-      Rkv.put(kv, "foo", "bar")
-      assert_receive {:kv, :add, ^kv, "foo"}
-      assert Rkv.unsubscribe(kv, "foo") == :ok
-      Rkv.put(kv, "foo", "baz")
-      refute_receive {:kv, :add, ^kv, "foo"}
+    test "invokes callback", %{kv: kv} do
+      assert Rkv.del(kv, :foo)
+      assert_receive {:del, :foo}
     end
   end
 end
