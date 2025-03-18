@@ -7,6 +7,24 @@ defmodule RkvTest do
     [kv: name]
   end
 
+  describe "start_link/1" do
+    test "checks the table protection" do
+      assert_raise RuntimeError, ~r/Rkv: table must be :public/, fn ->
+        start_supervised!({Rkv, name: :foo, ets_options: []})
+      end
+    end
+
+    test "checks the table type" do
+      assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
+        start_supervised!({Rkv, name: :foo, ets_options: [:bag]})
+      end
+
+      assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
+        start_supervised!({Rkv, name: :foo, ets_options: [:duplicate_bag]})
+      end
+    end
+  end
+
   describe "all/1" do
     test "gets all values", %{kv: kv} do
       assert Rkv.all(kv) == []
@@ -48,10 +66,10 @@ defmodule RkvTest do
       assert :ok = Rkv.watch_key(kv, :foo)
 
       Rkv.put(kv, :foo, "bar")
-      assert_receive {Rkv, :updated, ^kv, :foo, "bar"}
+      assert_receive {Rkv, :updated, ^kv, :foo}
 
       Rkv.put(kv, :bar, "baz")
-      refute_receive {Rkv, :updated, ^kv, :bar, _}
+      refute_receive {Rkv, :updated, ^kv, :bar}
 
       Rkv.del(kv, :foo)
       assert_receive {Rkv, :deleted, ^kv, :foo}
@@ -66,10 +84,10 @@ defmodule RkvTest do
       assert :ok = Rkv.watch_all(kv)
 
       Rkv.put(kv, :foo, "bar")
-      assert_receive {Rkv, :updated, ^kv, :foo, "bar"}
+      assert_receive {Rkv, :updated, ^kv, :foo}
 
       Rkv.put(kv, :bar, "baz")
-      assert_receive {Rkv, :updated, ^kv, :bar, "baz"}
+      assert_receive {Rkv, :updated, ^kv, :bar}
 
       Rkv.del(kv, :foo)
       assert_receive {Rkv, :deleted, ^kv, :foo}
@@ -85,7 +103,7 @@ defmodule RkvTest do
       assert :ok = Rkv.unwatch_key(kv, :foo)
 
       Rkv.put(kv, :foo, "bar")
-      refute_receive {Rkv, :updated, ^kv, :foo, "bar"}
+      refute_receive {Rkv, :updated, ^kv, :foo}
     end
   end
 
@@ -95,7 +113,7 @@ defmodule RkvTest do
       assert :ok = Rkv.unwatch_all(kv)
 
       Rkv.put(kv, :foo, "bar")
-      refute_receive {Rkv, :updated, ^kv, :foo, "bar"}
+      refute_receive {Rkv, :updated, ^kv, :foo}
     end
   end
 end

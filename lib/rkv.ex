@@ -20,7 +20,7 @@ defmodule Rkv do
   def ets(name) do
     case Registry.lookup(@registry, registry_key(name)) do
       [{_pid, value}] -> value
-      [] -> raise "Unknown KV #{inspect(name)}"
+      [] -> raise "Rkv: unknown #{inspect(name)}"
     end
   end
 
@@ -49,7 +49,7 @@ defmodule Rkv do
   @spec put(name(), key(), value()) :: :ok
   def put(name, key, value) do
     name |> ets() |> :ets.insert({key, value})
-    message = {__MODULE__, :updated, name, key, value}
+    message = {__MODULE__, :updated, name, key}
     PubSub.broadcast({name, key}, message)
     PubSub.broadcast(name, message)
     :ok
@@ -101,7 +101,11 @@ defmodule Rkv do
 
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts)
+    name = Keyword.fetch!(opts, :name)
+
+    GenServer.start_link(__MODULE__, opts,
+      name: {:via, Registry, {@registry, registry_key(name)}}
+    )
   end
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
@@ -113,7 +117,7 @@ defmodule Rkv do
 
   @spec default_ets_options() :: list()
   def default_ets_options do
-    [:public, read_concurrency: true, write_concurrency: true]
+    [:public, read_concurrency: true, write_concurrency: :auto]
   end
 
   @impl true
@@ -121,10 +125,16 @@ defmodule Rkv do
     name = Keyword.fetch!(opts, :name)
     ets = :ets.new(__MODULE__, Keyword.get(opts, :ets_options, default_ets_options()))
 
-    case Registry.register(@registry, registry_key(name), ets) do
-      {:ok, _owner} -> {:ok, %{ets: ets}}
-      {:error, err} -> {:stop, err}
+    if :ets.info(ets, :type) not in [:set, :ordered_set] do
+      raise "Rkv: table must be :set or :ordered_set"
     end
+
+    if :ets.info(ets, :protection) != :public do
+      raise "Rkv: table must be :public"
+    end
+
+    Registry.update_value(@registry, registry_key(name), fn _ -> ets end)
+    {:ok, nil}
   end
 
   defp registry_key(name), do: {__MODULE__, name}
