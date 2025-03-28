@@ -49,10 +49,23 @@ defmodule Rkv do
   @spec put(bucket(), key(), value()) :: :ok
   def put(bucket, key, value) do
     bucket |> ets() |> :ets.insert({key, value})
-    message = {:updated, bucket, key}
-    PubSub.broadcast({bucket, key}, message)
-    PubSub.broadcast(bucket, message)
+    broadcast_update(bucket, key)
     :ok
+  end
+
+  @doc """
+  Puts the key into the bucket only if the key does not exist.
+  """
+  @spec put_new(bucket(), key(), value()) :: :ok | {:error, :already_exists}
+  def put_new(bucket, key, value) do
+    case bucket |> ets() |> :ets.insert_new({key, value}) do
+      true ->
+        broadcast_update(bucket, key)
+        :ok
+
+      false ->
+        {:error, :already_exists}
+    end
   end
 
   @doc """
@@ -61,9 +74,7 @@ defmodule Rkv do
   @spec delete(bucket(), key()) :: :ok
   def delete(bucket, key) do
     bucket |> ets() |> :ets.delete(key)
-    message = {:deleted, bucket, key}
-    PubSub.broadcast({bucket, key}, message)
-    PubSub.broadcast(bucket, message)
+    broadcast_delete(bucket, key)
     :ok
   end
 
@@ -146,4 +157,16 @@ defmodule Rkv do
   end
 
   defp registry_key(bucket), do: {__MODULE__, bucket}
+
+  defp broadcast_update(bucket, key) do
+    message = {:updated, bucket, key}
+    PubSub.broadcast({bucket, key}, message)
+    PubSub.broadcast(bucket, message)
+  end
+
+  defp broadcast_delete(bucket, key) do
+    message = {:deleted, bucket, key}
+    PubSub.broadcast({bucket, key}, message)
+    PubSub.broadcast(bucket, message)
+  end
 end

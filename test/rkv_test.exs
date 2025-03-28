@@ -46,10 +46,27 @@ defmodule RkvTest do
     end
   end
 
-  describe "put/2" do
+  describe "put/3" do
     test "puts the value", %{bucket: bucket} do
       assert Rkv.put(bucket, :foo, "bar") == :ok
       assert Rkv.get(bucket, :foo) == "bar"
+    end
+  end
+
+  describe "put_new/3" do
+    test "puts the value if the key does not exist", %{bucket: bucket} do
+      :ok = Rkv.watch_all(bucket)
+      assert Rkv.put_new(bucket, :foo, "bar") == :ok
+      assert Rkv.get(bucket, :foo) == "bar"
+      assert_received {:updated, ^bucket, :foo}
+    end
+
+    test "returns the error if the key already exists", %{bucket: bucket} do
+      :ok = Rkv.put(bucket, :foo, "bar")
+      :ok = Rkv.watch_all(bucket)
+      assert Rkv.put_new(bucket, :foo, "baz") == {:error, :already_exists}
+      assert Rkv.get(bucket, :foo) == "bar"
+      refute_received {:updated, ^bucket, :foo}
     end
   end
 
