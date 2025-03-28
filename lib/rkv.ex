@@ -6,38 +6,38 @@ defmodule Rkv do
 
   alias Rkv.PubSub
 
-  @type name :: atom()
+  @type bucket :: term()
   @type key :: any()
   @type value :: any()
-  @type option :: {:name, name()} | {:ets_options, list()}
+  @type option :: {:bucket, bucket()} | {:ets_options, list()}
 
   @registry Rkv.Registry
 
   @doc """
   Returns the underlying ETS table.
   """
-  @spec ets(name()) :: :ets.table()
-  def ets(name) do
-    case Registry.lookup(@registry, registry_key(name)) do
+  @spec ets(bucket()) :: :ets.table()
+  def ets(bucket) do
+    case Registry.lookup(@registry, registry_key(bucket)) do
       [{_pid, value}] -> value
-      [] -> raise "Rkv: unknown #{inspect(name)}"
+      [] -> raise "Rkv: unknown #{inspect(bucket)}"
     end
   end
 
   @doc """
   Returns all key/value pairs
   """
-  @spec all(name()) :: [{key(), value()}]
-  def all(name) do
-    name |> ets() |> :ets.tab2list()
+  @spec all(bucket()) :: [{key(), value()}]
+  def all(bucket) do
+    bucket |> ets() |> :ets.tab2list()
   end
 
   @doc """
   Returns value by key.
   """
-  @spec get(name(), key(), any()) :: value() | nil
-  def get(name, key, default \\ nil) do
-    case name |> ets() |> :ets.lookup(key) do
+  @spec get(bucket(), key(), any()) :: value() | nil
+  def get(bucket, key, default \\ nil) do
+    case bucket |> ets() |> :ets.lookup(key) do
       [{_key, value}] -> value
       [] -> default
     end
@@ -46,73 +46,73 @@ defmodule Rkv do
   @doc """
   Puts new value.
   """
-  @spec put(name(), key(), value()) :: :ok
-  def put(name, key, value) do
-    name |> ets() |> :ets.insert({key, value})
-    message = {__MODULE__, :updated, name, key}
-    PubSub.broadcast({name, key}, message)
-    PubSub.broadcast(name, message)
+  @spec put(bucket(), key(), value()) :: :ok
+  def put(bucket, key, value) do
+    bucket |> ets() |> :ets.insert({key, value})
+    message = {__MODULE__, :updated, bucket, key}
+    PubSub.broadcast({bucket, key}, message)
+    PubSub.broadcast(bucket, message)
     :ok
   end
 
   @doc """
   Deletes value.
   """
-  @spec del(name(), key()) :: :ok
-  def del(name, key) do
-    name |> ets() |> :ets.delete(key)
-    message = {__MODULE__, :deleted, name, key}
-    PubSub.broadcast({name, key}, message)
-    PubSub.broadcast(name, message)
+  @spec del(bucket(), key()) :: :ok
+  def del(bucket, key) do
+    bucket |> ets() |> :ets.delete(key)
+    message = {__MODULE__, :deleted, bucket, key}
+    PubSub.broadcast({bucket, key}, message)
+    PubSub.broadcast(bucket, message)
     :ok
   end
 
   @doc """
   Returns `true` if the key already exists in the bucket, otherwise `false`.
   """
-  @spec exists?(name(), key()) :: boolean()
-  def exists?(name, key) do
-    name |> ets() |> :ets.member(key)
+  @spec exists?(bucket(), key()) :: boolean()
+  def exists?(bucket, key) do
+    bucket |> ets() |> :ets.member(key)
   end
 
   @doc """
   Subscribes the caller to key updates.
   """
-  @spec watch_key(name(), key()) :: :ok | {:error, term()}
-  def watch_key(name, key) do
-    PubSub.subscribe({name, key})
+  @spec watch_key(bucket(), key()) :: :ok | {:error, term()}
+  def watch_key(bucket, key) do
+    PubSub.subscribe({bucket, key})
   end
 
   @doc """
   Subscribes the caller to all updates.
   """
-  @spec watch_all(name()) :: :ok | {:error, term()}
-  def watch_all(name) do
-    PubSub.subscribe(name)
+  @spec watch_all(bucket()) :: :ok | {:error, term()}
+  def watch_all(bucket) do
+    PubSub.subscribe(bucket)
   end
 
   @doc """
   Unsubsribes the caller from key updates.
   """
-  @spec unwatch_key(name(), key()) :: :ok
-  def unwatch_key(name, key) do
-    PubSub.unsubscribe({name, key})
+  @spec unwatch_key(bucket(), key()) :: :ok
+  def unwatch_key(bucket, key) do
+    PubSub.unsubscribe({bucket, key})
   end
 
   @doc """
   Unsubsribes the caller from all updates.
   """
-  @spec unwatch_all(name()) :: :ok
-  def unwatch_all(name) do
-    PubSub.unsubscribe(name)
+  @spec unwatch_all(bucket()) :: :ok
+  def unwatch_all(bucket) do
+    PubSub.unsubscribe(bucket)
   end
 
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
-    name = Keyword.fetch!(opts, :name)
+    bucket = Keyword.fetch!(opts, :bucket)
 
     GenServer.start_link(__MODULE__, opts,
-      name: {:via, Registry, {@registry, registry_key(name)}}
+      name: {:via, Registry, {@registry, registry_key(bucket)}}
     )
   end
 
@@ -120,7 +120,7 @@ defmodule Rkv do
   def child_spec(opts) do
     opts
     |> super()
-    |> Supervisor.child_spec(id: {__MODULE__, Keyword.fetch!(opts, :name)})
+    |> Supervisor.child_spec(id: {__MODULE__, Keyword.fetch!(opts, :bucket)})
   end
 
   @spec default_ets_options() :: list()
@@ -130,7 +130,7 @@ defmodule Rkv do
 
   @impl true
   def init(opts) do
-    name = Keyword.fetch!(opts, :name)
+    bucket = Keyword.fetch!(opts, :bucket)
     ets = :ets.new(__MODULE__, Keyword.get(opts, :ets_options, default_ets_options()))
 
     if :ets.info(ets, :type) not in [:set, :ordered_set] do
@@ -141,9 +141,9 @@ defmodule Rkv do
       raise "Rkv: table must be :public"
     end
 
-    Registry.update_value(@registry, registry_key(name), fn _ -> ets end)
+    Registry.update_value(@registry, registry_key(bucket), fn _ -> ets end)
     {:ok, nil}
   end
 
-  defp registry_key(name), do: {__MODULE__, name}
+  defp registry_key(bucket), do: {__MODULE__, bucket}
 end

@@ -2,129 +2,129 @@ defmodule RkvTest do
   use ExUnit.Case, async: true
 
   setup do
-    name = :kv_test
-    start_link_supervised!({Rkv, name: name})
-    [kv: name]
+    bucket = :kv_test
+    start_link_supervised!({Rkv, bucket: bucket})
+    [bucket: bucket]
   end
 
   describe "start_link/1" do
     test "checks the table protection" do
       assert_raise RuntimeError, ~r/Rkv: table must be :public/, fn ->
-        start_supervised!({Rkv, name: :foo, ets_options: []})
+        start_supervised!({Rkv, bucket: :foo, ets_options: []})
       end
     end
 
     test "checks the table type" do
       assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
-        start_supervised!({Rkv, name: :foo, ets_options: [:bag]})
+        start_supervised!({Rkv, bucket: :foo, ets_options: [:bag]})
       end
 
       assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
-        start_supervised!({Rkv, name: :foo, ets_options: [:duplicate_bag]})
+        start_supervised!({Rkv, bucket: :foo, ets_options: [:duplicate_bag]})
       end
     end
   end
 
   describe "all/1" do
-    test "gets all values", %{kv: kv} do
-      assert Rkv.all(kv) == []
-      Rkv.put(kv, "a", 1)
-      Rkv.put(kv, "b", 2)
-      assert Rkv.all(kv) == [{"b", 2}, {"a", 1}]
+    test "gets all values", %{bucket: bucket} do
+      assert Rkv.all(bucket) == []
+      Rkv.put(bucket, "a", 1)
+      Rkv.put(bucket, "b", 2)
+      assert Rkv.all(bucket) == [{"b", 2}, {"a", 1}]
     end
   end
 
   describe "get/2" do
-    test "gets the value", %{kv: kv} do
-      assert Rkv.get(kv, :foo) == nil
-      assert Rkv.put(kv, :foo, "bar") == :ok
-      assert Rkv.get(kv, :foo) == "bar"
+    test "gets the value", %{bucket: bucket} do
+      assert Rkv.get(bucket, :foo) == nil
+      assert Rkv.put(bucket, :foo, "bar") == :ok
+      assert Rkv.get(bucket, :foo) == "bar"
     end
 
-    test "returns the default", %{kv: kv} do
-      assert Rkv.get(kv, :foo, "baz") == "baz"
+    test "returns the default", %{bucket: bucket} do
+      assert Rkv.get(bucket, :foo, "baz") == "baz"
     end
   end
 
   describe "put/2" do
-    test "puts the value", %{kv: kv} do
-      assert Rkv.put(kv, :foo, "bar") == :ok
-      assert Rkv.get(kv, :foo) == "bar"
+    test "puts the value", %{bucket: bucket} do
+      assert Rkv.put(bucket, :foo, "bar") == :ok
+      assert Rkv.get(bucket, :foo) == "bar"
     end
   end
 
   describe "del/2" do
-    test "deletes the value", %{kv: kv} do
-      Rkv.put(kv, :foo, "bar")
-      assert Rkv.del(kv, :foo) == :ok
-      assert Rkv.get(kv, :foo) == nil
+    test "deletes the value", %{bucket: bucket} do
+      Rkv.put(bucket, :foo, "bar")
+      assert Rkv.del(bucket, :foo) == :ok
+      assert Rkv.get(bucket, :foo) == nil
     end
   end
 
   describe "exists?" do
-    test "returns false when key does not exist", %{kv: kv} do
-      assert Rkv.exists?(kv, :foo) == false
+    test "returns false when key does not exist", %{bucket: bucket} do
+      assert Rkv.exists?(bucket, :foo) == false
     end
 
-    test "returns true when key exists", %{kv: kv} do
-      Rkv.put(kv, :foo, "bar")
-      assert Rkv.exists?(kv, :foo) == true
+    test "returns true when key exists", %{bucket: bucket} do
+      Rkv.put(bucket, :foo, "bar")
+      assert Rkv.exists?(bucket, :foo) == true
     end
   end
 
   describe "watch_key/2" do
-    test "subscribes to key updates", %{kv: kv} do
-      assert :ok = Rkv.watch_key(kv, :foo)
+    test "subscribes to key updates", %{bucket: bucket} do
+      assert :ok = Rkv.watch_key(bucket, :foo)
 
-      Rkv.put(kv, :foo, "bar")
-      assert_receive {Rkv, :updated, ^kv, :foo}
+      Rkv.put(bucket, :foo, "bar")
+      assert_receive {Rkv, :updated, ^bucket, :foo}
 
-      Rkv.put(kv, :bar, "baz")
-      refute_receive {Rkv, :updated, ^kv, :bar}
+      Rkv.put(bucket, :bar, "baz")
+      refute_receive {Rkv, :updated, ^bucket, :bar}
 
-      Rkv.del(kv, :foo)
-      assert_receive {Rkv, :deleted, ^kv, :foo}
+      Rkv.del(bucket, :foo)
+      assert_receive {Rkv, :deleted, ^bucket, :foo}
 
-      Rkv.del(kv, :bar)
-      refute_receive {Rkv, :deleted, ^kv, :bar}
+      Rkv.del(bucket, :bar)
+      refute_receive {Rkv, :deleted, ^bucket, :bar}
     end
   end
 
   describe "watch_all/1" do
-    test "subscribes to all updates", %{kv: kv} do
-      assert :ok = Rkv.watch_all(kv)
+    test "subscribes to all updates", %{bucket: bucket} do
+      assert :ok = Rkv.watch_all(bucket)
 
-      Rkv.put(kv, :foo, "bar")
-      assert_receive {Rkv, :updated, ^kv, :foo}
+      Rkv.put(bucket, :foo, "bar")
+      assert_receive {Rkv, :updated, ^bucket, :foo}
 
-      Rkv.put(kv, :bar, "baz")
-      assert_receive {Rkv, :updated, ^kv, :bar}
+      Rkv.put(bucket, :bar, "baz")
+      assert_receive {Rkv, :updated, ^bucket, :bar}
 
-      Rkv.del(kv, :foo)
-      assert_receive {Rkv, :deleted, ^kv, :foo}
+      Rkv.del(bucket, :foo)
+      assert_receive {Rkv, :deleted, ^bucket, :foo}
 
-      Rkv.del(kv, :bar)
-      assert_receive {Rkv, :deleted, ^kv, :bar}
+      Rkv.del(bucket, :bar)
+      assert_receive {Rkv, :deleted, ^bucket, :bar}
     end
   end
 
   describe "unwatch_key/1" do
-    test "unsubscribes from key updates", %{kv: kv} do
-      assert :ok = Rkv.watch_key(kv, :foo)
-      assert :ok = Rkv.unwatch_key(kv, :foo)
+    test "unsubscribes from key updates", %{bucket: bucket} do
+      assert :ok = Rkv.watch_key(bucket, :foo)
+      assert :ok = Rkv.unwatch_key(bucket, :foo)
 
-      Rkv.put(kv, :foo, "bar")
-      refute_receive {Rkv, :updated, ^kv, :foo}
+      Rkv.put(bucket, :foo, "bar")
+      refute_receive {Rkv, :updated, ^bucket, :foo}
     end
   end
 
   describe "unwatch_all/1" do
-    test "unsubscribes from all updates", %{kv: kv} do
-      assert :ok = Rkv.watch_all(kv)
-      assert :ok = Rkv.unwatch_all(kv)
+    test "unsubscribes from all updates", %{bucket: bucket} do
+      assert :ok = Rkv.watch_all(bucket)
+      assert :ok = Rkv.unwatch_all(bucket)
 
-      Rkv.put(kv, :foo, "bar")
-      refute_receive {Rkv, :updated, ^kv, :foo}
+      Rkv.put(bucket, :foo, "bar")
+      refute_receive {Rkv, :updated, ^bucket, :foo}
     end
   end
 end
