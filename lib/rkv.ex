@@ -68,6 +68,14 @@ defmodule Rkv do
   end
 
   @doc """
+  Returns `true` if the key already exists in the bucket, otherwise `false`.
+  """
+  @spec exists?(name(), key()) :: boolean()
+  def exists?(name, key) do
+    name |> ets() |> :ets.member(key)
+  end
+
+  @doc """
   Subscribes the caller to key updates.
   """
   @spec watch_key(name(), key()) :: :ok | {:error, term()}

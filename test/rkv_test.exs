@@ -61,6 +61,17 @@ defmodule RkvTest do
     end
   end
 
+  describe "exists?" do
+    test "returns false when key does not exist", %{kv: kv} do
+      assert Rkv.exists?(kv, :foo) == false
+    end
+
+    test "returns true when key exists", %{kv: kv} do
+      Rkv.put(kv, :foo, "bar")
+      assert Rkv.exists?(kv, :foo) == true
+    end
+  end
+
   describe "watch_key/2" do
     test "subscribes to key updates", %{kv: kv} do
       assert :ok = Rkv.watch_key(kv, :foo)
