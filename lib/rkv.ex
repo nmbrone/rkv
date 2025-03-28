@@ -25,7 +25,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Returns all key/value pairs
+  Returns all key/value pairs.
   """
   @spec all(bucket()) :: [{key(), value()}]
   def all(bucket) do
@@ -33,7 +33,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Returns value by key.
+  Returns the value by key.
   """
   @spec get(bucket(), key(), any()) :: value() | nil
   def get(bucket, key, default \\ nil) do
@@ -44,7 +44,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Puts new value.
+  Puts the key into the bucket.
   """
   @spec put(bucket(), key(), value()) :: :ok
   def put(bucket, key, value) do
@@ -56,10 +56,10 @@ defmodule Rkv do
   end
 
   @doc """
-  Deletes value.
+  Deletes the key from the bucket.
   """
-  @spec del(bucket(), key()) :: :ok
-  def del(bucket, key) do
+  @spec delete(bucket(), key()) :: :ok
+  def delete(bucket, key) do
     bucket |> ets() |> :ets.delete(key)
     message = {:deleted, bucket, key}
     PubSub.broadcast({bucket, key}, message)
@@ -68,7 +68,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Returns `true` if the key already exists in the bucket, otherwise `false`.
+  Returns `true` if the key exists in the bucket, otherwise `false`.
   """
   @spec exists?(bucket(), key()) :: boolean()
   def exists?(bucket, key) do

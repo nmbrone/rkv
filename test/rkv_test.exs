@@ -53,10 +53,10 @@ defmodule RkvTest do
     end
   end
 
-  describe "del/2" do
+  describe "delete/2" do
     test "deletes the value", %{bucket: bucket} do
       Rkv.put(bucket, :foo, "bar")
-      assert Rkv.del(bucket, :foo) == :ok
+      assert Rkv.delete(bucket, :foo) == :ok
       assert Rkv.get(bucket, :foo) == nil
     end
   end
@@ -82,10 +82,10 @@ defmodule RkvTest do
       Rkv.put(bucket, :bar, "baz")
       refute_receive {:updated, ^bucket, :bar}
 
-      Rkv.del(bucket, :foo)
+      Rkv.delete(bucket, :foo)
       assert_receive {:deleted, ^bucket, :foo}
 
-      Rkv.del(bucket, :bar)
+      Rkv.delete(bucket, :bar)
       refute_receive {:deleted, ^bucket, :bar}
     end
   end
@@ -100,10 +100,10 @@ defmodule RkvTest do
       Rkv.put(bucket, :bar, "baz")
       assert_receive {:updated, ^bucket, :bar}
 
-      Rkv.del(bucket, :foo)
+      Rkv.delete(bucket, :foo)
       assert_receive {:deleted, ^bucket, :foo}
 
-      Rkv.del(bucket, :bar)
+      Rkv.delete(bucket, :bar)
       assert_receive {:deleted, ^bucket, :bar}
     end
   end
