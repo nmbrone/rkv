@@ -107,13 +107,9 @@ defmodule Rkv do
     PubSub.unsubscribe(bucket)
   end
 
-  @spec start_link([option()]) :: GenServer.on_start()
-  def start_link(opts) do
-    bucket = Keyword.fetch!(opts, :bucket)
-
-    GenServer.start_link(__MODULE__, opts,
-      name: {:via, Registry, {@registry, registry_key(bucket)}}
-    )
+  @spec default_ets_options() :: list()
+  def default_ets_options do
+    [:public, read_concurrency: true, write_concurrency: :auto]
   end
 
   @spec child_spec([option()]) :: Supervisor.child_spec()
@@ -123,9 +119,13 @@ defmodule Rkv do
     |> Supervisor.child_spec(id: {__MODULE__, Keyword.fetch!(opts, :bucket)})
   end
 
-  @spec default_ets_options() :: list()
-  def default_ets_options do
-    [:public, read_concurrency: true, write_concurrency: :auto]
+  @spec start_link([option()]) :: GenServer.on_start()
+  def start_link(opts) do
+    bucket = Keyword.fetch!(opts, :bucket)
+
+    GenServer.start_link(__MODULE__, opts,
+      name: {:via, Registry, {@registry, registry_key(bucket)}}
+    )
   end
 
   @impl true
