@@ -77,16 +77,16 @@ defmodule RkvTest do
       assert :ok = Rkv.watch_key(bucket, :foo)
 
       Rkv.put(bucket, :foo, "bar")
-      assert_receive {Rkv, :updated, ^bucket, :foo}
+      assert_receive {:updated, ^bucket, :foo}
 
       Rkv.put(bucket, :bar, "baz")
-      refute_receive {Rkv, :updated, ^bucket, :bar}
+      refute_receive {:updated, ^bucket, :bar}
 
       Rkv.del(bucket, :foo)
-      assert_receive {Rkv, :deleted, ^bucket, :foo}
+      assert_receive {:deleted, ^bucket, :foo}
 
       Rkv.del(bucket, :bar)
-      refute_receive {Rkv, :deleted, ^bucket, :bar}
+      refute_receive {:deleted, ^bucket, :bar}
     end
   end
 
@@ -95,16 +95,16 @@ defmodule RkvTest do
       assert :ok = Rkv.watch_all(bucket)
 
       Rkv.put(bucket, :foo, "bar")
-      assert_receive {Rkv, :updated, ^bucket, :foo}
+      assert_receive {:updated, ^bucket, :foo}
 
       Rkv.put(bucket, :bar, "baz")
-      assert_receive {Rkv, :updated, ^bucket, :bar}
+      assert_receive {:updated, ^bucket, :bar}
 
       Rkv.del(bucket, :foo)
-      assert_receive {Rkv, :deleted, ^bucket, :foo}
+      assert_receive {:deleted, ^bucket, :foo}
 
       Rkv.del(bucket, :bar)
-      assert_receive {Rkv, :deleted, ^bucket, :bar}
+      assert_receive {:deleted, ^bucket, :bar}
     end
   end
 
@@ -114,7 +114,7 @@ defmodule RkvTest do
       assert :ok = Rkv.unwatch_key(bucket, :foo)
 
       Rkv.put(bucket, :foo, "bar")
-      refute_receive {Rkv, :updated, ^bucket, :foo}
+      refute_receive {:updated, ^bucket, :foo}
     end
   end
 
@@ -124,7 +124,7 @@ defmodule RkvTest do
       assert :ok = Rkv.unwatch_all(bucket)
 
       Rkv.put(bucket, :foo, "bar")
-      refute_receive {Rkv, :updated, ^bucket, :foo}
+      refute_receive {:updated, ^bucket, :foo}
     end
   end
 end

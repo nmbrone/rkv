@@ -20,7 +20,7 @@ defmodule Rkv do
   def ets(bucket) do
     case Registry.lookup(@registry, registry_key(bucket)) do
       [{_pid, value}] -> value
-      [] -> raise "Rkv: unknown #{inspect(bucket)}"
+      [] -> raise "Rkv: unknown bucket #{inspect(bucket)}"
     end
   end
 
@@ -49,7 +49,7 @@ defmodule Rkv do
   @spec put(bucket(), key(), value()) :: :ok
   def put(bucket, key, value) do
     bucket |> ets() |> :ets.insert({key, value})
-    message = {__MODULE__, :updated, bucket, key}
+    message = {:updated, bucket, key}
     PubSub.broadcast({bucket, key}, message)
     PubSub.broadcast(bucket, message)
     :ok
@@ -61,7 +61,7 @@ defmodule Rkv do
   @spec del(bucket(), key()) :: :ok
   def del(bucket, key) do
     bucket |> ets() |> :ets.delete(key)
-    message = {__MODULE__, :deleted, bucket, key}
+    message = {:deleted, bucket, key}
     PubSub.broadcast({bucket, key}, message)
     PubSub.broadcast(bucket, message)
     :ok
