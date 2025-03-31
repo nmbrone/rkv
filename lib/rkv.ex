@@ -44,6 +44,17 @@ defmodule Rkv do
   end
 
   @doc """
+  Fetches the value for the key.
+  """
+  @spec fetch(bucket(), key()) :: {:ok, value()} | :error
+  def fetch(bucket, key) do
+    case get(bucket, key) do
+      nil -> :error
+      val -> {:ok, val}
+    end
+  end
+
+  @doc """
   Puts the key into the bucket.
   """
   @spec put(bucket(), key(), value()) :: :ok

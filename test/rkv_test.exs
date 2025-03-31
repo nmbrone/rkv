@@ -46,6 +46,17 @@ defmodule RkvTest do
     end
   end
 
+  describe "fetch/2" do
+    test "returns the error if the key does not exist", %{bucket: bucket} do
+      assert :error = Rkv.fetch(bucket, :foo)
+    end
+
+    test "returns the value", %{bucket: bucket} do
+      :ok = Rkv.put(bucket, :foo, "bar")
+      assert {:ok, "bar"} = Rkv.fetch(bucket, :foo)
+    end
+  end
+
   describe "put/3" do
     test "puts the value", %{bucket: bucket} do
       assert Rkv.put(bucket, :foo, "bar") == :ok
