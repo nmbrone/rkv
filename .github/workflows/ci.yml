@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - "README.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MIX_ENV: test
+
+jobs:
+  workflow:
+    name: Workflow
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: .tool-versions
+          version-type: strict
+
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      - name: Fetch dependencies
+        run: mix deps.get --check-locked
+
+      - name: Check retired dependencies
+        run: mix hex.audit
+
+      - name: Check unused dependencies
+        run: mix deps.unlock --check-unused
+
+      - name: Check code formatting
+        run: mix format --check-formatted
+
+      - name: Compile code
+        run: mix compile --all-warnings --warning-as-errors
+
+      - name: Dialyzer
+        run: mix dialyzer --format github
+
+      - name: Run tests
+        run: mix test
