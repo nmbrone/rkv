@@ -1,0 +1,15 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "elixir",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "README.md"
+        }
+      ]
+    }
+  }
+}
