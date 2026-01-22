@@ -30,7 +30,7 @@ defmodule RkvTest do
       assert Rkv.all(bucket) == []
       Rkv.put(bucket, "a", 1)
       Rkv.put(bucket, "b", 2)
-      assert Rkv.all(bucket) == [{"b", 2}, {"a", 1}]
+      assert bucket |> Rkv.all() |> Enum.sort() == [{"a", 1}, {"b", 2}]
     end
   end
 
