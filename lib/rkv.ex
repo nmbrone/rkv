@@ -1,6 +1,26 @@
 defmodule Rkv do
   @moduledoc """
   A simple ETS-based key-value storage with the ability to watch changes.
+
+  ## Usage
+
+  You can start the bucket process under a supervisor:
+
+      children = [
+        {Rkv, bucket: :my_bucket}
+      ]
+
+      Supervisor.start_link(children, strategy: :one_for_one)
+
+  Or start it directly:
+
+      Rkv.start_link(bucket: :my_bucket)
+
+  Then you can use the bucket:
+
+      Rkv.put(:my_bucket, "foo", "bar")
+      Rkv.get(:my_bucket, "foo")
+      #=> "bar"
   """
   use GenServer
 
@@ -26,6 +46,13 @@ defmodule Rkv do
 
   @doc """
   Returns all key/value pairs.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      iex> Rkv.all(:my_bucket)
+      [{"foo", "bar"}]
+
   """
   @spec all(bucket()) :: [{key(), value()}]
   def all(bucket) do
@@ -34,6 +61,21 @@ defmodule Rkv do
 
   @doc """
   Returns the value by key.
+
+  Returns `default` if the key does not exist.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      iex> Rkv.get(:my_bucket, "foo")
+      "bar"
+
+      iex> Rkv.get(:my_bucket, "missing")
+      nil
+
+      iex> Rkv.get(:my_bucket, "missing", :default)
+      :default
+
   """
   @spec get(bucket(), key(), any()) :: value() | nil
   def get(bucket, key, default \\ nil) do
@@ -45,6 +87,18 @@ defmodule Rkv do
 
   @doc """
   Fetches the value for the key.
+
+  Returns `{:ok, value}` if the key exists, otherwise `:error`.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      iex> Rkv.fetch(:my_bucket, "foo")
+      {:ok, "bar"}
+
+      iex> Rkv.fetch(:my_bucket, "missing")
+      :error
+
   """
   @spec fetch(bucket(), key()) :: {:ok, value()} | :error
   def fetch(bucket, key) do
@@ -56,6 +110,14 @@ defmodule Rkv do
 
   @doc """
   Puts the key into the bucket.
+
+  If the key already exists, the value is updated.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      :ok
+
   """
   @spec put(bucket(), key(), value()) :: :ok
   def put(bucket, key, value) do
@@ -66,6 +128,16 @@ defmodule Rkv do
 
   @doc """
   Puts the key into the bucket only if the key does not exist.
+
+  Returns `:ok` if successful, or `{:error, :already_exists}` if the key already exists.
+
+  ## Examples
+
+      iex> Rkv.put_new(:my_bucket, "foo", "bar")
+      :ok
+      iex> Rkv.put_new(:my_bucket, "foo", "baz")
+      {:error, :already_exists}
+
   """
   @spec put_new(bucket(), key(), value()) :: :ok | {:error, :already_exists}
   def put_new(bucket, key, value) do
@@ -81,6 +153,15 @@ defmodule Rkv do
 
   @doc """
   Deletes the key from the bucket.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      iex> Rkv.delete(:my_bucket, "foo")
+      :ok
+      iex> Rkv.get(:my_bucket, "foo")
+      nil
+
   """
   @spec delete(bucket(), key()) :: :ok
   def delete(bucket, key) do
@@ -91,6 +172,16 @@ defmodule Rkv do
 
   @doc """
   Returns `true` if the key exists in the bucket, otherwise `false`.
+
+  ## Examples
+
+      iex> Rkv.put(:my_bucket, "foo", "bar")
+      iex> Rkv.exists?(:my_bucket, "foo")
+      true
+
+      iex> Rkv.exists?(:my_bucket, "missing")
+      false
+
   """
   @spec exists?(bucket(), key()) :: boolean()
   def exists?(bucket, key) do
@@ -99,6 +190,16 @@ defmodule Rkv do
 
   @doc """
   Subscribes the caller to key updates.
+
+  The caller will receive:
+  * `{:updated, bucket, key}` when the key is updated
+  * `{:deleted, bucket, key}` when the key is deleted
+
+  ## Examples
+
+      iex> Rkv.watch_key(:my_bucket, "foo")
+      :ok
+
   """
   @spec watch_key(bucket(), key()) :: :ok | {:error, term()}
   def watch_key(bucket, key) do
@@ -107,6 +208,16 @@ defmodule Rkv do
 
   @doc """
   Subscribes the caller to all updates.
+
+  The caller will receive:
+  * `{:updated, bucket, key}` when any key is updated
+  * `{:deleted, bucket, key}` when any key is deleted
+
+  ## Examples
+
+      iex> Rkv.watch_all(:my_bucket)
+      :ok
+
   """
   @spec watch_all(bucket()) :: :ok | {:error, term()}
   def watch_all(bucket) do
@@ -115,6 +226,12 @@ defmodule Rkv do
 
   @doc """
   Unsubsribes the caller from key updates.
+
+  ## Examples
+
+      iex> Rkv.unwatch_key(:my_bucket, "foo")
+      :ok
+
   """
   @spec unwatch_key(bucket(), key()) :: :ok
   def unwatch_key(bucket, key) do
@@ -123,6 +240,12 @@ defmodule Rkv do
 
   @doc """
   Unsubsribes the caller from all updates.
+
+  ## Examples
+
+      iex> Rkv.unwatch_all(:my_bucket)
+      :ok
+
   """
   @spec unwatch_all(bucket()) :: :ok
   def unwatch_all(bucket) do
@@ -141,6 +264,19 @@ defmodule Rkv do
     |> Supervisor.child_spec(id: {__MODULE__, Keyword.fetch!(opts, :bucket)})
   end
 
+  @doc """
+  Starts the Rkv bucket.
+
+  The `opts` keyword list must contain the `:bucket` key, which is used to
+  register the process.
+
+  ## Options
+
+    * `:bucket` - the name of the bucket (required)
+    * `:ets_options` - options passed to `:ets.new/2` (optional).
+      Defaults to `[:public, read_concurrency: true, write_concurrency: :auto]`.
+      The table type must be `:set` or `:ordered_set`, and protection must be `:public`.
+  """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
     bucket = Keyword.fetch!(opts, :bucket)
