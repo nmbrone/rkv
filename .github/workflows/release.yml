@@ -44,3 +44,20 @@ jobs:
           git tag -a v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} -m "Release v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}"
           git push origin v${{ steps.release.outputs.major }}
           git push origin v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          version-file: .tool-versions
+          version-type: strict
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: mix deps.get
+
+      - name: Publish to Hex
+        if: ${{ steps.release.outputs.release_created }}
+        run: mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
