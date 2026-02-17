@@ -34,6 +34,14 @@ defmodule Rkv do
   @registry Rkv.Registry
 
   @doc """
+  Returns all active buckets.
+  """
+  @spec buckets() :: [bucket()]
+  def buckets do
+    Registry.select(@registry, [{{{__MODULE__, :"$1"}, :_, :_}, [], [:"$1"]}])
+  end
+
+  @doc """
   Returns the underlying ETS table.
   """
   @spec ets(bucket()) :: :ets.table()
