@@ -25,6 +25,12 @@ defmodule RkvTest do
     end
   end
 
+  describe "buckets/0" do
+    test "returns all active buckets", %{bucket: bucket} do
+      assert Rkv.buckets() == [bucket]
+    end
+  end
+
   describe "all/1" do
     test "gets all values", %{bucket: bucket} do
       assert Rkv.all(bucket) == []
