@@ -13,7 +13,7 @@ The package can be installed by adding `rkv` to your list of dependencies in `mi
 ```elixir
 def deps do
   [
-    {:rkv, "~> 0.0.0"}
+    {:rkv, "~> 0.1.0"}
   ]
 end
 ```
