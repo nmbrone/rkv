@@ -2,6 +2,7 @@
   "packages": {
     ".": {
       "release-type": "elixir",
+      "bootstrap-sha": "f1c6a07991ed5c64b5fea5c128472f87de09033d",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "extra-files": [
