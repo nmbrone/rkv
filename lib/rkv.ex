@@ -173,9 +173,10 @@ defmodule Rkv do
   """
   @spec delete(bucket(), key()) :: :ok
   def delete(bucket, key) do
-    bucket |> ets() |> :ets.delete(key)
-    broadcast_delete(bucket, key)
-    :ok
+    case bucket |> ets() |> :ets.take(key) do
+      [_entry] -> broadcast_delete(bucket, key)
+      [] -> :ok
+    end
   end
 
   @doc """
