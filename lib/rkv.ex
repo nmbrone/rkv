@@ -87,9 +87,9 @@ defmodule Rkv do
   """
   @spec get(bucket(), key(), any()) :: value() | nil
   def get(bucket, key, default \\ nil) do
-    case bucket |> ets() |> :ets.lookup(key) do
-      [{_key, value}] -> value
-      [] -> default
+    case fetch(bucket, key) do
+      {:ok, value} -> value
+      :error -> default
     end
   end
 
@@ -110,9 +110,9 @@ defmodule Rkv do
   """
   @spec fetch(bucket(), key()) :: {:ok, value()} | :error
   def fetch(bucket, key) do
-    case get(bucket, key) do
-      nil -> :error
-      val -> {:ok, val}
+    case bucket |> ets() |> :ets.lookup(key) do
+      [{_key, value}] -> {:ok, value}
+      [] -> :error
     end
   end
 
