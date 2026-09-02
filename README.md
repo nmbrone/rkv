@@ -4,6 +4,8 @@
 
 A simple ETS-based key-value storage with the ability to watch changes.
 
+Documentation: [hexdocs.pm/rkv](https://hexdocs.pm/rkv)
+
 ## Installation
 
 The package can be installed by adding `rkv` to your list of dependencies in `mix.exs`:
@@ -22,35 +24,7 @@ end
 
 ## Usage
 
-You can start `Rkv` directly or as part of a supervision tree.
-
-### Starting the bucket
-
-```elixir
-# Start the process
-{:ok, _pid} = Rkv.start_link(bucket: :my_bucket)
-```
-
-### Basic Operations
-
-```elixir
-# Put a value
-:ok = Rkv.put(:my_bucket, "key", "value")
-
-# Get a value
-"value" = Rkv.get(:my_bucket, "key")
-
-# Get a missing value
-nil = Rkv.get(:my_bucket, "missing")
-
-# Get with default
-"default" = Rkv.get(:my_bucket, "missing", "default")
-
-# Delete a value
-:ok = Rkv.delete(:my_bucket, "key")
-```
-
-### Supervision
+### Starting a bucket
 
 Add `Rkv` to your supervision tree:
 
@@ -69,7 +43,35 @@ defmodule MyApp.Application do
 end
 ```
 
-### Watching Changes
+Or start one directly:
+
+```elixir
+{:ok, _pid} = Rkv.start_link(bucket: :my_bucket)
+```
+
+A bucket's data lives only as long as the process that owns it, so treat a
+bucket as a cache rather than a store.
+
+### Basic operations
+
+```elixir
+# Put a value
+:ok = Rkv.put(:my_bucket, "key", "value")
+
+# Get a value
+"value" = Rkv.get(:my_bucket, "key")
+
+# Get a missing value
+nil = Rkv.get(:my_bucket, "missing")
+
+# Get with default
+"default" = Rkv.get(:my_bucket, "missing", "default")
+
+# Delete a value
+:ok = Rkv.delete(:my_bucket, "key")
+```
+
+### Watching changes
 
 You can subscribe to changes on a specific key or the entire bucket.
 
@@ -80,7 +82,13 @@ Rkv.watch_key(:my_bucket, "config")
 Rkv.put(:my_bucket, "config", %{debug: true})
 
 receive do
-  {:updated, :my_bucket, "config"} -> IO.puts "Config updated!"
+  {:updated, :my_bucket, "config"} -> IO.puts("Config updated!")
+end
+
+Rkv.delete(:my_bucket, "config")
+
+receive do
+  {:deleted, :my_bucket, "config"} -> IO.puts("Config deleted!")
 end
 
 # Watch all keys
@@ -89,6 +97,8 @@ Rkv.watch_all(:my_bucket)
 Rkv.put(:my_bucket, "other_key", 123)
 
 receive do
-  {:updated, :my_bucket, "other_key"} -> IO.puts "Something changed!"
+  {:updated, :my_bucket, "other_key"} -> IO.puts("Something changed!")
 end
 ```
+
+Use `Rkv.unwatch_key/2` and `Rkv.unwatch_all/1` to stop watching.
