@@ -48,7 +48,7 @@ defmodule Rkv do
   def ets(bucket) do
     case Registry.lookup(@registry, registry_key(bucket)) do
       [{_pid, value}] -> value
-      [] -> raise "Rkv: unknown bucket #{inspect(bucket)}"
+      [] -> raise ArgumentError, "Rkv: unknown bucket #{inspect(bucket)}"
     end
   end
 
@@ -130,7 +130,7 @@ defmodule Rkv do
   @spec put(bucket(), key(), value()) :: :ok
   def put(bucket, key, value) do
     bucket |> ets() |> :ets.insert({key, value})
-    broadcast_update(bucket, key)
+    broadcast(bucket, key, :updated)
     :ok
   end
 
@@ -151,7 +151,7 @@ defmodule Rkv do
   def put_new(bucket, key, value) do
     case bucket |> ets() |> :ets.insert_new({key, value}) do
       true ->
-        broadcast_update(bucket, key)
+        broadcast(bucket, key, :updated)
         :ok
 
       false ->
@@ -174,8 +174,12 @@ defmodule Rkv do
   @spec delete(bucket(), key()) :: :ok
   def delete(bucket, key) do
     case bucket |> ets() |> :ets.take(key) do
-      [_entry] -> broadcast_delete(bucket, key)
-      [] -> :ok
+      [_entry] ->
+        broadcast(bucket, key, :deleted)
+        :ok
+
+      [] ->
+        :ok
     end
   end
 
@@ -301,11 +305,11 @@ defmodule Rkv do
     ets = :ets.new(__MODULE__, Keyword.get(opts, :ets_options, default_ets_options()))
 
     if :ets.info(ets, :type) not in [:set, :ordered_set] do
-      raise "Rkv: table must be :set or :ordered_set"
+      raise ArgumentError, "Rkv: table must be :set or :ordered_set"
     end
 
     if :ets.info(ets, :protection) != :public do
-      raise "Rkv: table must be :public"
+      raise ArgumentError, "Rkv: table must be :public"
     end
 
     Registry.update_value(@registry, registry_key(bucket), fn _ -> ets end)
@@ -314,14 +318,8 @@ defmodule Rkv do
 
   defp registry_key(bucket), do: {__MODULE__, bucket}
 
-  defp broadcast_update(bucket, key) do
-    message = {:updated, bucket, key}
-    PubSub.broadcast({bucket, key}, message)
-    PubSub.broadcast(bucket, message)
-  end
-
-  defp broadcast_delete(bucket, key) do
-    message = {:deleted, bucket, key}
+  defp broadcast(bucket, key, event) do
+    message = {event, bucket, key}
     PubSub.broadcast({bucket, key}, message)
     PubSub.broadcast(bucket, message)
   end
