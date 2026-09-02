@@ -24,29 +24,21 @@ defmodule Rkv do
 
   ## Buckets
 
-  A bucket is owned by the process started for it, and its ETS table dies with
-  that process. Nothing is persisted or repopulated on restart, so treat a
-  bucket as a cache rather than a store: whatever you put in it should be
-  reproducible from somewhere else.
+  A bucket's data lives only as long as the process that owns it. If that
+  process restarts, the bucket comes back empty, so treat a bucket as a cache
+  rather than a store.
 
-  Bucket names live in one registry shared by the whole application, so two
-  dependencies that both use `Rkv` draw from the same namespace. A name can be
-  any term, which makes a collision unlikely but not impossible — namespace the
-  name if you use `Rkv` inside a library.
+  Bucket names are global to the application. Pick one unlikely to clash if you
+  use `Rkv` inside a library.
 
   ## Watching changes
 
-  `watch_key/2` and `watch_all/1` subscribe the calling process to
-  `{:updated, bucket, key}` and `{:deleted, bucket, key}` messages.
+  A notification tells you that a key changed, not what it changed to, so read
+  the key when one arrives. A key that changes often may change again before you
+  read it, so you see the latest value rather than every step along the way.
 
-  A message says that a key changed, not what it changed to, so read the key
-  when one arrives. Reads and writes go straight to ETS without passing through
-  the owning process, so the value may have moved on again by the time you read
-  it: you always converge on the latest value, but you cannot reconstruct the
-  sequence of changes from the messages.
-
-  A process subscribed through both `watch_key/2` and `watch_all/1` receives one
-  message per subscription, as it would with `Phoenix.PubSub`.
+  Watching a key and its bucket at the same time delivers two messages, one for
+  each subscription.
   """
   use GenServer
 
@@ -80,6 +72,8 @@ defmodule Rkv do
 
   @doc """
   Returns all key/value pairs.
+
+  The order is not defined.
 
   ## Examples
 
@@ -264,7 +258,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Unsubsribes the caller from key updates.
+  Unsubscribes the caller from key updates.
 
   ## Examples
 
@@ -278,7 +272,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Unsubsribes the caller from all updates.
+  Unsubscribes the caller from all updates.
 
   ## Examples
 
@@ -292,10 +286,9 @@ defmodule Rkv do
   end
 
   @doc """
-  Returns the options a bucket's ETS table is created with when `:ets_options`
-  is not given.
+  Returns the `:ets_options` a bucket is created with by default.
 
-  Build on it to extend the defaults instead of replacing them:
+  Add to it to keep the defaults:
 
       {Rkv, bucket: :my_bucket, ets_options: Rkv.default_ets_options() ++ [:compressed]}
 
@@ -321,11 +314,9 @@ defmodule Rkv do
   ## Options
 
     * `:bucket` - the name of the bucket (required)
-    * `:ets_options` - options passed to `:ets.new/2` (optional). Replaces
-      `default_ets_options/0` rather than merging with it, so build on that
-      function to keep the defaults. The table type must be `:set` or
-      `:ordered_set` and the protection must be `:public`; both are checked at
-      startup and raise `ArgumentError` otherwise.
+    * `:ets_options` - options for `:ets.new/2` (optional). Replaces
+      `default_ets_options/0` instead of merging with it. The table must be
+      `:set` or `:ordered_set`, and `:public`.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
