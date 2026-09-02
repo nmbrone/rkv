@@ -1,6 +1,6 @@
 defmodule Rkv do
   @moduledoc """
-  A simple ETS-based key-value storage with the ability to watch changes.
+  A simple ETS-based key-value store with the ability to watch changes.
 
   ## Usage
 
@@ -21,6 +21,24 @@ defmodule Rkv do
       Rkv.put(:my_bucket, "foo", "bar")
       Rkv.get(:my_bucket, "foo")
       #=> "bar"
+
+  ## Buckets
+
+  A bucket's data lives only as long as the process that owns it. If that
+  process restarts, the bucket comes back empty, so treat a bucket as a cache
+  rather than a store.
+
+  Bucket names are global to the application. Pick one unlikely to clash if you
+  use `Rkv` inside a library.
+
+  ## Watching changes
+
+  A notification tells you that a key changed, not what it changed to, so read
+  the key when one arrives. A key that changes often may change again before you
+  read it, so you see the latest value rather than every step along the way.
+
+  Watching a key and its bucket at the same time delivers two messages, one for
+  each subscription.
   """
   use GenServer
 
@@ -54,6 +72,8 @@ defmodule Rkv do
 
   @doc """
   Returns all key/value pairs.
+
+  The order is not defined.
 
   ## Examples
 
@@ -238,7 +258,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Unsubsribes the caller from key updates.
+  Unsubscribes the caller from key updates.
 
   ## Examples
 
@@ -252,7 +272,7 @@ defmodule Rkv do
   end
 
   @doc """
-  Unsubsribes the caller from all updates.
+  Unsubscribes the caller from all updates.
 
   ## Examples
 
@@ -265,6 +285,14 @@ defmodule Rkv do
     PubSub.unsubscribe(bucket)
   end
 
+  @doc """
+  Returns the `:ets_options` a bucket is created with by default.
+
+  Add to it to keep the defaults:
+
+      {Rkv, bucket: :my_bucket, ets_options: Rkv.default_ets_options() ++ [:compressed]}
+
+  """
   @spec default_ets_options() :: list()
   def default_ets_options do
     [:public, read_concurrency: true, write_concurrency: :auto]
@@ -286,9 +314,9 @@ defmodule Rkv do
   ## Options
 
     * `:bucket` - the name of the bucket (required)
-    * `:ets_options` - options passed to `:ets.new/2` (optional).
-      Defaults to `[:public, read_concurrency: true, write_concurrency: :auto]`.
-      The table type must be `:set` or `:ordered_set`, and protection must be `:public`.
+    * `:ets_options` - options for `:ets.new/2` (optional). Replaces
+      `default_ets_options/0` instead of merging with it. The table must be
+      `:set` or `:ordered_set`, and `:public`.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
