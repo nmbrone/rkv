@@ -61,6 +61,12 @@ defmodule RkvTest do
       :ok = Rkv.put(bucket, :foo, "bar")
       assert {:ok, "bar"} = Rkv.fetch(bucket, :foo)
     end
+
+    test "distinguishes a stored nil from a missing key", %{bucket: bucket} do
+      :ok = Rkv.put(bucket, :foo, nil)
+      assert {:ok, nil} = Rkv.fetch(bucket, :foo)
+      assert :error = Rkv.fetch(bucket, :bar)
+    end
   end
 
   describe "put/3" do
