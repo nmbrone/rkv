@@ -34,7 +34,7 @@ defmodule Rkv.MixProject do
   end
 
   defp description do
-    "A simple ETS-based key-value storage with the ability to watch changes."
+    "A simple ETS-based key-value store with the ability to watch changes."
   end
 
   defp package do

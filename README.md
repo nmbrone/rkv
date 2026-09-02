@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nmbrone/rkv/actions/workflows/ci.yml/badge.svg)](https://github.com/nmbrone/rkv/actions/workflows/ci.yml)
 
-A simple ETS-based key-value storage with the ability to watch changes.
+A simple ETS-based key-value store with the ability to watch changes.
 
 Documentation: [hexdocs.pm/rkv](https://hexdocs.pm/rkv)
 
