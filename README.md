@@ -1,10 +1,10 @@
 # Rkv
 
 [![CI](https://github.com/nmbrone/rkv/actions/workflows/ci.yml/badge.svg)](https://github.com/nmbrone/rkv/actions/workflows/ci.yml)
+[![Hex](https://img.shields.io/hexpm/v/rkv.svg)](https://hex.pm/packages/rkv)
+[![Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/rkv)
 
 A simple ETS-based key-value store with the ability to watch changes.
-
-Documentation: [hexdocs.pm/rkv](https://hexdocs.pm/rkv)
 
 ## Installation
 
