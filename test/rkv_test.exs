@@ -99,6 +99,12 @@ defmodule RkvTest do
       assert Rkv.delete(bucket, :foo) == :ok
       assert Rkv.get(bucket, :foo) == nil
     end
+
+    test "does not notify when the key does not exist", %{bucket: bucket} do
+      :ok = Rkv.watch_all(bucket)
+      assert Rkv.delete(bucket, :missing) == :ok
+      refute_received {:deleted, ^bucket, :missing}
+    end
   end
 
   describe "exists?" do
