@@ -7,20 +7,20 @@ defmodule RkvTest do
     [bucket: bucket]
   end
 
-  describe "start_link/1" do
+  describe "init/1" do
     test "checks the table protection" do
-      assert_raise RuntimeError, ~r/Rkv: table must be :public/, fn ->
-        start_supervised!({Rkv, bucket: :foo, ets_options: []})
+      assert_raise ArgumentError, "Rkv: table must be :public", fn ->
+        Rkv.init(bucket: :foo, ets_options: [])
       end
     end
 
     test "checks the table type" do
-      assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
-        start_supervised!({Rkv, bucket: :foo, ets_options: [:bag]})
+      assert_raise ArgumentError, "Rkv: table must be :set or :ordered_set", fn ->
+        Rkv.init(bucket: :foo, ets_options: [:bag])
       end
 
-      assert_raise RuntimeError, ~r/Rkv: table must be :set or :ordered_set/, fn ->
-        start_supervised!({Rkv, bucket: :foo, ets_options: [:duplicate_bag]})
+      assert_raise ArgumentError, "Rkv: table must be :set or :ordered_set", fn ->
+        Rkv.init(bucket: :foo, ets_options: [:duplicate_bag])
       end
     end
   end
